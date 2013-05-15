@@ -6,6 +6,7 @@ Support for math as a postpass on LLVM IR.
 
 from __future__ import print_function, division, absolute_import
 
+import os
 import ctypes
 import collections
 
@@ -51,6 +52,10 @@ types = (#int_, long_, longlong,
          float32, float64, float128,
          complex64, complex128, complex256)
 
+symbol_data = open(os.path.join(os.path.dirname(__file__), "Symbol.map")).read()
+symbols = set(word.rstrip(';') for word in symbol_data.split())
+have_symbol = symbols.__contains__
+
 def use_openlibm():
     """
     Populate a dict with runtime addressed of openlibm math functions.
@@ -67,8 +72,11 @@ def use_openlibm():
 
     for mathfunc in mathmodule.unary_libc_math_funcs:
         for ty in types:
-            print(_math_suffix(mathfunc, ty))
-            # add_func(_math_suffix(mathfunc, ty), ty)
+            funcname = _math_suffix(mathfunc, ty)
+            if have_symbol(funcname):
+                add_func(funcname, ty)
+            else:
+                print("Missing symbol: ", funcname)
 
     for ty in types:
         add_func(_absname(ty), ty)
