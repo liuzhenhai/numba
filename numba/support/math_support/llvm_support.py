@@ -28,6 +28,11 @@ def map_llvm_to_ctypes(llvm_type, py_module=None):
     if kind == llvm.core.TYPE_INTEGER:
         ctype = getattr(ctypes,"c_int"+str(llvm_type.width))
 
+    elif kind in (llvm.core.TYPE_X86_FP80,
+                  llvm.core.TYPE_PPC_FP128,
+                  llvm.core.TYPE_FP128):
+        ctype = ctypes.c_longdouble
+
     elif kind == llvm.core.TYPE_DOUBLE:
         ctype = ctypes.c_double
 
@@ -56,9 +61,16 @@ def map_llvm_to_ctypes(llvm_type, py_module=None):
             ctype = ctypes.POINTER(map_llvm_to_ctypes(pointee, py_module))
 
     elif kind == llvm.core.TYPE_STRUCT:
-        struct_name = llvm_type.name.split('.')[-1]
-        if not PY3:
-            struct_name = struct_name.encode('ascii')
+        # Be careful accessing name:
+        #     python: Type.cpp:580: llvm::StringRef llvm::StructType::getName()
+        #                           const: Assertion `!isLiteral() &&
+        #                           "Literal structs never have names"' failed.
+        if not llvm_type._ptr.hasName():
+            struct_name = ''
+        else:
+            struct_name = llvm_type.name.split('.')[-1]
+            if not PY3:
+                struct_name = struct_name.encode('ascii')
 
         # If the named type is already known, return it
         if py_module:
