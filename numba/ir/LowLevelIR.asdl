@@ -1,0 +1,65 @@
+-- Low-level operations, three-address (SSA) code.
+--
+-- Note: Each operation has a type
+
+module LowLevelIR version "0.1"
+{
+
+    expr = Any
+    const = Constant(object pyval)
+
+    block = Block(identifier id, defn* defns, tail tail_expr)
+
+    tail = jump(identifier target)
+         | cbranch(expr test, identifier true_target, identifier false_target)
+         | ret(expr result)
+
+    -- Variables
+    alloc = alloca(expr n)
+    var = load(alloc var)
+        | store(alloc var, value)
+        | phi(expr *blocks, expr *values)
+
+    convert = ptr_to_int(expr arg)
+            | int_to_ptr(expr arg)
+
+               -- addition in number of units
+    pointers = ptradd(expr pointer, expr addition)
+             | ptrload(expr pointer)
+             | ptrstore(expr pointer, expr value)
+
+    -- Arrays
+    indices = dataptr(expr array)
+            | stride(expr array, int dim)
+            | shape(expr array, int dim)
+
+    fields = getfield_struct(expr struct, int field_idx)
+           | setfield_struct(expr struct, int field_idx, expr value)
+
+    -- Functions
+    fn = function(const func) -- other known numba function
+       | external(str name)
+       | funcaddr(expr pointer)
+       -- Math
+       | sin | asin | sinh | asinh
+       | cos | acos | cosh | acosh
+       | tan | atan | atan2 | tanh | atanh
+       | log | log2 | log10 | log1p
+       | exp | exp2 | expm1
+       | floor | ceil | abs | erfc | rint
+       | pow | round
+
+    -- Calls
+    calls = call_pointer(fn func)
+          | call_external(fn func)
+
+    -- Operators
+    op = compare(expr left, cmpop op, expr right)
+       | binop(expr left, operator op, expr right)
+       | unop(unaryop op, expr operand)
+
+    operator = Add | Sub | Mult | Div | Mod | Pow | LShift
+             | RShift | BitOr | BitXor | BitAnd | FloorDiv
+    unaryop = Invert | Not | UAdd | USub
+    cmpop = Eq | NotEq | Lt | LtE | Gt | GtE | Is | IsNot | In | NotIn
+}
