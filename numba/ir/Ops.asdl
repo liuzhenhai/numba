@@ -5,60 +5,140 @@
 module Opcodes version "0.1"
 {
 
-    -- expr = constant | alloc | coerce | ...
+    -- expr = ctor | coerce | ...
+    expr = Any
+    const = Constant(object pyval)
 
-    constant = const        -- (object pyval)
+    block = Block(identifier id, defn* defns, tail tail_expr)
 
-    alloc = new_list        -- (expr *elems)
-          | new_tuple       -- (expr *elems)
-          | new_dict        -- (expr *keys, expr *values)
-          | new_set         -- (expr *elems)
-          | new_string      -- (expr *chars)
-          | new_bytes       -- (expr *char)
-          | new_object      -- (expr *args)
-          | new_ext_object  -- (expr *args)
-          | new_struct      -- (expr *initializers)
-          | new_data        -- (expr size)
+    tail = jump(identifier target)
+         | cbranch(expr test, identifier true_target, identifier false_target)
+         | throw(expr exn)
+         | ret(expr result)
+         | setup_exc(identifier body,
+                     excepthandler* handlers,
+                     identifier? orelse,
+                     identifier? finalbody)
 
-    coerce = box            -- (expr arg)
-           | unbox          -- (expr arg)
+    -- Variables
+    alloc = alloca(expr n)
+    var = load(alloc var)
+        | store(alloc var, value)
+        | phi(expr *blocks, expr *values)
 
-    convert = str_to_int    -- (expr arg)
-            | int_to_str    -- (expr arg)
-            | ptr_to_int    -- (expr arg)
-            | int_to_ptr    -- (expr arg)
+    ctor = new_list(expr *elems)
+         | new_tuple(expr *elems)
+         | new_dict(expr *keys, expr *values)
+         | new_set(expr *elems)
+         | new_string(expr *chars)
+         | new_bytes(expr *char)
+         | new_object(expr *args)
+         | new_ext_object(expr *args)
+         | new_struct(expr *initializers)
+         | new_data(expr size)
 
-    indices = getindex_array
-            | setindex_array
-            | getslice_array
-            | setslice_array
-            | get
+    coerce = box(expr arg)
+           | unbox(expr arg)
+           -- promote and argument to the destination type
+           | promote(expr arg)
+           -- coerce arg to an object
+           | to_object(expr arg)
+           -- coerce object to native value of destination type
+           | from_object(expr arg)
 
+    convert = str_to_int(expr arg)
+            | int_to_str(expr arg)
+            | ptr_to_int(expr arg)
+            | int_to_ptr(expr arg)
 
-    fields = getfield_struct    -- (expr arg, int field_idx)
-           | setfield_struct    -- (expr arg, int field_idx, expr value)
-           | getfield_obj
-           | setfield_obj
-           | etc
+               -- addition in number of units
+    pointers = ptradd(expr pointer, expr addition)
+             | ptrload(expr pointer)
+             | ptrstore(expr pointer, expr value)
 
-    -- Math
-    math = sin | asin | sinh | asinh
-         | cos | acos | cosh | acosh
-         | tan | atan | atan2 | tanh | atanh
-         | log | log2 | log10 | log1p
-         | exp | exp2 | expm1
-         | floor | ceil
-         | abs
-         | erfc
-         | rint
+    indices = getindex_array(expr array, expr *indices)
+            | setindex_array(expr array, expr *indices, expr value)
+            | getslice_array(expr array, expr *indices)
+            | setslice_array(expr array, expr *indices, expr value)
+            -- object get/setitem. No distinction between indexing/slicing
+            | getindex_obj(expr array, expr *indices)
+            | setindex_obj(expr array, expr *indices, expr value)
 
-    binary_math = pow | round
+    fields = getfield_struct(expr struct, int field_idx)
+           | setfield_struct(expr struct, int field_idx, expr value)
+           | getfield_obj(expr obj, str attr)
+           | setfield_obj(expr obj, str attr, expr value)
+           | getfield_frame(frame f, str attr)
+           | setfield_frame(frame f, str attr, expr value)
+
+    -- Functions
+    fn = function(const func) -- other known numba function
+       | partial(fn function, expr *vals)
+       | extmethod(expr extobj, str methname)
+       | external(str name)
+       | funcaddr(expr pointer)
+       | builtin(const func)
+       | operator(const op)
+       | make_closure(fn func, frame f)
+       -- Math
+       | sin | asin | sinh | asinh
+       | cos | acos | cosh | acosh
+       | tan | atan | atan2 | tanh | atanh
+       | log | log2 | log10 | log1p
+       | exp | exp2 | expm1
+       | floor | ceil | abs | erfc | rint
+       | pow | round
 
     -- Calls
+    calls = call_obj(expr obj)
+          | call_virtual(fn method)
+          | call_hashed(fn method)
+          | call_pointer(fn func)
+          | call_external(fn func)
+          | call_func(fn func) -- call partial, builtin, math, closure
 
-    calls = call_obj
-          | call_exttype
-          | call_extmethod
-          | call_pointer
-          | call_external
+    -- Closures
+    frame = make_activation_fame(frame? parent, str *names)
+    closure = make_closure(fn func, frame f)
+    -- cells = make_cell()
+    --       | load_cell(cell c)
+    --       | store_cell(cell c, expr value)
+
+    -- iterators
+    iter = getiter(expr obj)
+         | next(iter it)
+
+    generators = yield(expr? value)
+               | yieldfrom(expr? value)
+
+    -- Operators
+    op = compare(expr left, cmpop op, expr right)
+       | binop(expr left, operator op, expr right)
+       | unop(unaryop op, expr operand)
+
+    slice_ = slice(expr? lower, expr? upper, expr? step)
+    operator = Add | Sub | Mult | Div | Mod | Pow | LShift
+             | RShift | BitOr | BitXor | BitAnd | FloorDiv
+    unaryop = Invert | Not | UAdd | USub
+    cmpop = Eq | NotEq | Lt | LtE | Gt | GtE | Is | IsNot | In | NotIn
+
+    -- Exceptions
+    excepthandler = ExceptHandler(expr *types,
+                                  identifier? name,
+                                  identifier body)
+
+    -- Function arguments
+    arguments = (arg* args, identifier? vararg, expr? varargannotation,
+                 arg* kwonlyargs, identifier? kwarg,
+                 expr? kwargannotation, expr* defaults,
+                 expr* kw_defaults)
+    arg = (identifier arg, expr? annotation)
+
+    -- keyword arguments supplied to call
+    keyword = (identifier arg, expr value)
+
+    -- Arrays
+    elwise = elmap(fn func, expr *arrays, const? axes)
+           | elreduce(fn func, expr array, const? axes)
+           -- | ...
 }
