@@ -36,6 +36,7 @@ module Opcodes version "0.1"
          | new_ext_object(expr *args)
          | new_struct(expr *initializers)
          | new_data(expr size)
+         | new_complex(expr real, expr imag)
 
     coerce = box(expr arg)
            | unbox(expr arg)
@@ -75,27 +76,17 @@ module Opcodes version "0.1"
     fn = function(const func) -- other known numba function
        | partial(fn function, expr *vals)
        | extmethod(expr extobj, str methname)
-       | external(str name)
+       | external(str name) -- this is specified at module-level
        | funcaddr(expr pointer)
        | builtin(const func)
        | operator(const op)
        | make_closure(fn func, frame f)
-       -- Math
-       | sin | asin | sinh | asinh
-       | cos | acos | cosh | acosh
-       | tan | atan | atan2 | tanh | atanh
-       | log | log2 | log10 | log1p
-       | exp | exp2 | expm1
-       | floor | ceil | abs | erfc | rint
-       | pow | round
 
     -- Calls
     calls = call_obj(expr obj)
           | call_virtual(fn method)
-          | call_hashed(fn method)
-          | call_pointer(fn func)
-          | call_external(fn func)
-          | call_func(fn func) -- call partial, builtin, math, closure
+          | call_native(fn func) -- external or pointer
+          | call_func(fn func)
 
     -- Closures
     frame = make_activation_fame(frame? parent, str *names)

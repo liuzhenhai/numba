@@ -11,7 +11,9 @@ from lepl import *
 
 # ______________________________________________________________________
 
+Module = namedtuple("Module", ["externals", "functions"])
 Function = namedtuple("Function", ["name", "args", "blocks"])
+External = namedtuple("External", ["name", "restype", "args"])
 Block = namedtuple("Block", ["label", "stats"])
 Stat = namedtuple("Stat", ["dest", "opname", "type", "args"])
 
