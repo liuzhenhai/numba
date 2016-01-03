@@ -412,10 +412,8 @@ def unbox_tuple(typ, obj, c):
     else:
         cleanup = None
 
-    # XXX should we use context.make_tuple()
     if isinstance(typ, types.UniTuple):
-        value = cgutils.pack_array(c.builder, values,
-                                   c.context.get_value_type(typ.dtype))
+        value = cgutils.pack_array(c.builder, values)
     else:
         value = cgutils.make_anonymous_struct(c.builder, values)
     return NativeValue(value, is_error=is_error, cleanup=cleanup)

@@ -22,7 +22,6 @@ class TestNumberConversion(unittest.TestCase):
     Test all int/float numeric conversion to ensure we have all the external
     dependencies to perform these conversions.
     """
-    # NOTE: more implicit tests are in test_numberctor
 
     @classmethod
     def automatic_populate(cls):
